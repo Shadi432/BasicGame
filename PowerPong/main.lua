@@ -28,8 +28,10 @@ local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
     end
 
     --local bounceAngle = normalisedRelativeIntersectY * MAX_BOUNCE_ANGLE
-    --ball.vx = ball.vx * math.cos(normalisedRelativeIntersectY)
+    --ball.vx =  math.cos(normalisedRelativeIntersectY)
     ball.vy = -math.sin(normalisedRelativeIntersectY)
+    testRect.y = -math.sin(normalisedRelativeIntersectY)
+    ball.vx = ball.vx * ((1 - normalisedRelativeIntersectY))
 
 
     --holdCalc = true
@@ -40,20 +42,36 @@ function love.load()
     lastCollide = nil -- Debugging purposes
     holdCalc = false -- Debugging purposes
 
-
+-- SmallPaddlPowerUp
     smallPaddleIcon = love.graphics.newImage("SmallPaddlePowerUp.png")
     smallPaddleFrames = {}
     local smallPaddle_width = smallPaddleIcon:getWidth()
     local smallPaddle_height = smallPaddleIcon:getHeight()
+    print("smallPaddleWidth: " .. smallPaddle_width .. " smallPaddleHeight: " .. smallPaddle_height)
 
     local smallPaddleFrameWidth = 16
     local smallPaddleFrameHeight = 16
 
-    for i = 0,6 do
+    for i = 0,3 do
         table.insert(smallPaddleFrames, love.graphics.newQuad(i * smallPaddleFrameWidth, 0, smallPaddleFrameWidth, smallPaddleFrameHeight, smallPaddle_width, smallPaddle_height))
     end
 
+    for i=0,3 do
+        table.insert(smallPaddleFrames, love.graphics.newQuad(i * smallPaddleFrameWidth, smallPaddleFrameHeight, smallPaddleFrameWidth, smallPaddleFrameHeight, smallPaddle_width, smallPaddle_height))
+    end
+
+    for i=0,3 do
+        table.insert(smallPaddleFrames,love.graphics.newQuad(i * smallPaddleFrameWidth,smallPaddleFrameHeight*2,smallPaddleFrameWidth,smallPaddleFrameHeight,smallPaddle_width,smallPaddle_height))
+    end
+
+
+    for i=1, #smallPaddleFrames do
+
+    end
+
     currentSmallPaddleFrame = 1
+
+
     ball = {
         x = 0, -- Taking away the width so it's properly centred since origin is usually top left corner.
         y = 0,
@@ -70,8 +88,8 @@ function love.load()
     paddle1 = {
         x = 100,
         y = (love.graphics.getHeight()/2),
-        width = 100,
-        height = 400,
+        width = 25,
+        height = 200,
         rot = math.rad(0),
         sX = 6,
         sY = 6,
@@ -84,8 +102,8 @@ function love.load()
     paddle2 = {
         x = love.graphics.getWidth()-100,
         y = (love.graphics.getHeight()/2),
-        width = 100,
-        height = 400,
+        width = 25,
+        height = 200,
         rot = 0,
         sX = 6,
         sY = 6,
@@ -117,13 +135,14 @@ function love.load()
     lowerYBoundary = love.graphics.getHeight()
     upperXBoundary = love.graphics.getWidth()
     lowerXBoundary = 0
-
 end
 
 function love.update(dt)
 
+
     currentSmallPaddleFrame = currentSmallPaddleFrame + 10 * dt
-    if currentSmallPaddleFrame >= 8 then
+
+    if currentSmallPaddleFrame >= #smallPaddleFrames+1 then
         currentSmallPaddleFrame = 1
     end
 
@@ -164,12 +183,10 @@ function love.update(dt)
 
     if ball.x > upperXBoundary-ball.width then
         ball.x = love.graphics.getWidth()/2
-        print("Collision1")
        paddle1.score = paddle1.score + 1
 
        ball.startDirection = START_DIRECTION[math.random(1,2)]
    elseif ball.x < lowerXBoundary+ball.width then
-       print("Collision2")
        ball.x = love.graphics.getWidth()/2
        paddle2.score = paddle2.score + 1
        ball.startDirection = START_DIRECTION[math.random(1,2)]
@@ -197,7 +214,7 @@ function love.update(dt)
 end
 
 function love.draw()
-    love.graphics.draw(SmallPaddlePowerUp, smallPaddleFrames[math.floor(currentSmallPaddleFrame)], 100, 100)
+    love.graphics.draw(smallPaddleIcon, smallPaddleFrames[math.floor(currentSmallPaddleFrame)], 100*6, 100*6,0,6,6)
 
     love.graphics.setColor(1,1,1)
     love.graphics.rectangle("fill", paddle1.x, paddle1.y, paddle1.width, paddle1.height)
