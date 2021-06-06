@@ -24,7 +24,7 @@ end
 local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
     local intersectY = (math.abs(paddle.y)) - math.abs(ball.y) --(expecting a negative value if it's on one side of the paddle and a positive one on the other, so each side is half the length of the paddle)
     print(intersectY)
-    local normalisedRelativeIntersectY = math.abs(intersectY)/(paddle.height) -- Divide distance down 
+    local normalisedRelativeIntersectY = math.abs(intersectY)/(paddle.height) -- Divide distance down the paddle by the height to normalise it from 0 to 1
 
 
     --local relativeIntersectY = (paddle.y+(paddle.height/2)) - intersectY -- relative to the paddle the ball is in this space.
