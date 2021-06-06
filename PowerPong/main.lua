@@ -1,9 +1,14 @@
 
 local MAX_BOUNCE_ANGLE = math.rad(90) -- Maximum angle it can bounce at
-local START_DIRECTION = {1,-1}
+local START_DIRECTION = {-1,-1}
 math.randomseed(os.time())
 
-
+local function pauseGameExec() -- Pause game execution for debugging purposes
+    if not pauseGame then
+        pauseFrame = frameCounter
+    end
+    pauseGame = true
+end
 
 local function collisionDetection(object1,object2) -- AABB Collision
     if ((object1.x + object1.width > object2.x) and (object1.x < object2.x + object2.width)) and ((object1.y < object2.y+object2.height) and (object1.y+object1.height > object2.y)) then
@@ -22,32 +27,41 @@ local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
     --local relativeIntersectY = (paddle.y+(paddle.height/2)) - intersectY -- relative to the paddle the ball is in this space.
 
     if normalisedRelativeIntersectY > 1 then
+        posEndCorrection = true
         normalisedRelativeIntersectY = 1
     elseif normalisedRelativeIntersectY < -1 then
+        posEndCorrection = false
         normalisedRelativeIntersectY = -1
     end
 
     --local bounceAngle = normalisedRelativeIntersectY * MAX_BOUNCE_ANGLE
     --ball.vx =  math.cos(normalisedRelativeIntersectY)
     ball.vy = -math.sin(normalisedRelativeIntersectY)
-    testRect.y = -math.sin(normalisedRelativeIntersectY)
+    testRect.y = normalisedRelativeIntersectY
     ball.vx = ball.vx * ((1 - normalisedRelativeIntersectY))
 
 
     --holdCalc = true
+    print(normalisedRelativeIntersectY)
+    pauseGameExec()
+
 end
 
 function love.load()
     love.window.setMode(320, 180, {fullscreen = true})
     lastCollide = nil -- Debugging purposes
     holdCalc = false -- Debugging purposes
+    posEndCorrection = nil -- Debugging purposes
+    pauseGame = false -- Debugging purposes
+    frameCounter = 0 -- Debugging purposes
+    pauseFrame = 0
 
 -- SmallPaddlPowerUp
     smallPaddleIcon = love.graphics.newImage("SmallPaddlePowerUp.png")
     smallPaddleFrames = {}
     local smallPaddle_width = smallPaddleIcon:getWidth()
     local smallPaddle_height = smallPaddleIcon:getHeight()
-    print("smallPaddleWidth: " .. smallPaddle_width .. " smallPaddleHeight: " .. smallPaddle_height)
+
 
     local smallPaddleFrameWidth = 16
     local smallPaddleFrameHeight = 16
@@ -65,9 +79,9 @@ function love.load()
     end
 
 
-    for i=1, #smallPaddleFrames do
+    --for i=1, #smallPaddleFrames do
 
-    end
+    --end
 
     currentSmallPaddleFrame = 1
 
@@ -87,7 +101,7 @@ function love.load()
 
     paddle1 = {
         x = 100,
-        y = (love.graphics.getHeight()/2),
+        y = (love.graphics.getHeight()/2+134.3),
         width = 25,
         height = 200,
         rot = math.rad(0),
@@ -138,7 +152,7 @@ function love.load()
 end
 
 function love.update(dt)
-
+    frameCounter = frameCounter + 1
 
     currentSmallPaddleFrame = currentSmallPaddleFrame + 10 * dt
 
@@ -214,6 +228,7 @@ function love.update(dt)
 end
 
 function love.draw()
+
     love.graphics.draw(smallPaddleIcon, smallPaddleFrames[math.floor(currentSmallPaddleFrame)], 100*6, 100*6,0,6,6)
 
     love.graphics.setColor(1,1,1)
@@ -223,11 +238,12 @@ function love.draw()
     -- Below both at 10/10
         love.graphics.print("Ball X Velocity: " .. ball.vx .. " Ball Y Velocity: " .. ball.vy,0,50)
 
+
     if lastCollide then
         love.graphics.print("Last collided with: Paddle1")
     elseif lastCollide == false then
         love.graphics.print("Last collided with: Paddle2")
-    else
+    elseif lastCollide == nil then
         love.graphics.print("Last collided with: None")
     end
 
@@ -239,4 +255,20 @@ function love.draw()
 
     love.graphics.print("Player 1: " .. paddle1.score .. "  Player 2: " .. paddle2.score,0,250)
 
+    local endCorrectionMsg = "No end correction"
+
+    if posEndCorrection then
+        endCorrectionMsg = ("Positive end correction")
+    elseif posEndCorrection == false then
+        endCorrectionMsg = ("Negative end correction")
+    else
+        endCorrectionMsg = ("No end correction needed!")
+    end
+
+
+    if pauseGame then
+        if frameCounter == pauseFrame+5 then
+            love.timer.sleep(10000)
+        end
+    end
 end
