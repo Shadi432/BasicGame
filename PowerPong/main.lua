@@ -22,8 +22,11 @@ local function collisionDetection(object1,object2) -- AABB Collision
 end
 
 local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
-    local intersectY = (paddle.y+(paddle.height/2)) - ball.y --(expecting a negative value if it's on one side of the paddle and a positive one on the other, so each side is half the length of the paddle)
-    local normalisedRelativeIntersectY = intersectY/(paddle.height/2)
+    local intersectY = (math.abs(paddle.y)) - math.abs(ball.y) --(expecting a negative value if it's on one side of the paddle and a positive one on the other, so each side is half the length of the paddle)
+    print(intersectY)
+    local normalisedRelativeIntersectY = math.abs(intersectY)/(paddle.height) -- Divide distance down 
+
+
     --local relativeIntersectY = (paddle.y+(paddle.height/2)) - intersectY -- relative to the paddle the ball is in this space.
 
     if normalisedRelativeIntersectY > 1 then
@@ -42,7 +45,6 @@ local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
 
 
     --holdCalc = true
-    print(normalisedRelativeIntersectY)
     pauseGameExec()
 
 end
@@ -101,7 +103,7 @@ function love.load()
 
     paddle1 = {
         x = 100,
-        y = (love.graphics.getHeight()/2+134.3),
+        y = (love.graphics.getHeight()/2+50),
         width = 25,
         height = 200,
         rot = math.rad(0),
@@ -250,7 +252,7 @@ function love.draw()
     love.graphics.draw(ball.image, ball.x-(138*ball.sX)  , ball.y-(71*ball.sY),0,ball.sX,ball.sY) --0, ball.sX, ball.sY) -- 138 from left edge of ball drawing to the horizontal edge of the "image"
     -- 71 from the top of ball to top of the plane
     love.graphics.setColor(144/255,255/255,255/255)
-    love.graphics.rectangle("fill",testRect.x,testRect.y,10,10)
+    love.graphics.rectangle("fill",testRect.x,paddle1.y,10,10)
     love.graphics.print("RelYIntersect: " .. testRect.y,250)
 
     love.graphics.print("Player 1: " .. paddle1.score .. "  Player 2: " .. paddle2.score,0,250)
@@ -267,7 +269,7 @@ function love.draw()
 
 
     if pauseGame then
-        if frameCounter == pauseFrame+5 then
+        if frameCounter == pauseFrame then
             love.timer.sleep(10000)
         end
     end
