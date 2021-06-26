@@ -11,8 +11,8 @@ local function pauseGameExec() -- Pause game execution for debugging purposes
 end
 
 local function collisionDetection(object1,object2) -- AABB Collision
-    if ((object1.x + object1.width > object2.x) and (object1.x < object2.x + object2.width)) and ((object1.y < object2.y+object2.height) and (object1.y+object1.height > object2.y)) then
 
+    if ((object1.x + object1.width > object2.x) and (object1.x < object2.x + object2.width)) and ((object1.y < object2.y+object2.height) and (object1.y+object1.height > object2.y)) then
         return true
     else
         return false
@@ -43,24 +43,107 @@ local function reboundCalculation(ball,paddle) -- assume paddle1.y is the centre
     ball.vx = (2 * math.cos(bounceAngle)) * 500
 end
 
+
+
+local function createBall()
+    local ball = {
+        x = love.graphics.getWidth()/2, -- Taking away the width so it's properly centred since origin is usually top left corner.
+        y = love.graphics.getHeight()/2,
+        image = love.graphics.newImage("Pong.Ball.png"),
+        width = 7,
+        height = 7,
+        sX = 3,
+        sY = 3, -- was 6
+        vx = 400, -- Horizontal speed
+        vxi = 400, -- Initial horizontal speed
+        vy = 0, -- Vertical speed
+        startDirection = START_DIRECTION[math.random(1,2)],
+        lastCollision = nil-- Stop ball colliding with the same paddle twice
+    }
+
+    ball.xi = ball.x -- initial x and y
+    ball.yi = ball.y
+
+    ball.width = ball.width * ball.sX   -- Correct the width and height for the sf of the ball
+    ball.height = ball.height * ball.sY
+
+    ball.x = love.graphics.getWidth()/2
+    ball.y = love.graphics.getHeight()/2
+
+    return ball
+end
+
 local function ballServe(gameStart)
     currentPowerUp = nil
-    lastCollision = nil
-    ball.x = ball.xi
-    ball.y = ball.yi
-    ball.startDirection = START_DIRECTION[math.random(1,2)]
 
+    ballList[#ballList + 1] = createBall()
+    ballList[1].lastCollision = nil
 
     if gameStart then
+        paddle1.y = paddle1.yi - paddle1.height
+        paddle2.y = paddle2.yi - paddle2.height
         pauseTime = time + 5
+        paddle1.score = 0
+        paddle2.score = 0
+        rallyCount = 0
     else
         pauseTime = time + 3
     end
 
+    ballList[1].x = ballList[1].xi
+    ballList[1].y = ballList[1].yi
+    ballList[1].startDirection = START_DIRECTION[math.random(1,2)]
 
-    ball.vy = 0
-    ball.vx = ball.vxi
+
+    ballList[1].vy = 0
+    ballList[1].vx = ballList[1].vxi
     rallyCount = rallyCount + 1
+end
+
+local function resetPowerUpEffects(powerupName,paddleEffected,resetAll)
+    if resetAll then
+        for i=1,#powerUpEffectQueue do
+            local powerupName = powerUpEffectQueue[i][1]
+            local paddleEffected = powerUpEffectQueue[i][2]
+
+            if powerupName == "Enlarge ball" then
+                for j=1, #ballList do
+                    ballList[j].sX = 3
+                    ballList[j].sy = 3
+                    ballList[j].width = ballList[j].width * ballList[j].sX
+                    ballList[j].height = ballList[j].height * ballList[j].sY
+                end
+            elseif powerupName == "Shrink paddle" then
+                paddleEffected.height = 600
+            elseif powerupName == "Freeze paddle" then
+                paddleEffected.speed = 600
+            elseif powerupname == "Multi Ball" then
+                for k=1, #ballList do
+                    ballList[k] = nil
+                end
+            elseif powerupName == "Increase paddle speed" then
+                paddleEffected.speed = paddleEffected.speed / 2
+            end
+        end
+        powerUpEffectQueue = {}
+    else
+        if powerupName == "Enlarge ball" then
+            for j=1, #ballList do
+                ballList[j].sX = 3
+                ballList[j].sY = 3
+                ballList[j].width = ballList[j].width * ballList[j].sX
+                ballList[j].height = ballList[j].height * ballList[j].sY
+            end
+        elseif powerupName == "Shrink paddle" then
+            paddleEffected.height =  600
+        elseif powerupName == "Freeze paddle" then
+            paddleEffected.speed = 600
+        elseif powerupname == "Multi Ball" then
+            ballList[#ballList] = nil
+        elseif powerupName == "Increase paddle speed" then
+            paddleEffected.speed = paddleEffected.speed / 2
+        end
+    end
 end
 
 function love.load()
@@ -71,22 +154,24 @@ function love.load()
     frameCounter = 0 -- Debugging purposes
     pauseFrame = 0 -- Debugging purposes
 
-    lastCollision = nil -- Stop ball colliding with the same paddle twice
     time = 0 -- Time since program has started
     pauseTime = 0 -- If this time is > time then the time will need to catch up to pausetime before code continues updating
     rallyCount = 0 -- When displaying take away value by 1 because logic of first turns.
-    scoreLimit = 10
+    scoreLimit = 2
     roundBegun = false
     winner = nil
     showTutorial = false
     nextPowerUpSpawn = 0
+    gameEnd = false
+    powerUpEffectQueue = {}
+    ballList = {}
 
     powerUps = {
-        {Name = "Enlarge ball", image = love.graphics.newImage("BigBallPowerUp.png")},
+        --{Name = "Enlarge ball", image = love.graphics.newImage("BigBallPowerUp.png")},
         {Name = "Shrink paddle",image = love.graphics.newImage("SmallPaddlePowerUp.png")},
-        {Name = "Freeze paddle", image = love.graphics.newImage("FreezePowerUp.png")},
-        {Name = "Multi Ball", image = love.graphics.newImage("MultiballPowerUp.png")},
-        {Name = "Increase paddle speed", image = love.graphics.newImage("PaddleFasterPowerUp.png")}
+        --{Name = "Freeze paddle", image = love.graphics.newImage("FreezePowerUp.png")},
+        --{Name = "Multi Ball", image = love.graphics.newImage("MultiballPowerUp.png")},
+        --{Name = "Increase paddle speed", image = love.graphics.newImage("PaddleFasterPowerUp.png")}
     }
 
     currentPowerUp = nil
@@ -108,27 +193,11 @@ function love.load()
         end
     end
 
-
-
-    ball = {
-        x = love.graphics.getWidth()/2, -- Taking away the width so it's properly centred since origin is usually top left corner.
-        y = love.graphics.getHeight()/2,
-        image = love.graphics.newImage("Pong.Ball.png"),
-        width = 7,
-        height = 7,
-        sX = 3,
-        sY = 3, -- was 6
-        vx = 400, -- Horizontal speed
-        vxi = 400, -- Initial horizontal speed
-        vy = 0, -- Vertical speed
-        startDirection = START_DIRECTION[math.random(1,2)]
-    }
-    ball.xi = ball.x -- initial x and y
-    ball.yi = ball.y
-
     paddle1 = {
         x = 100,
         y = (love.graphics.getHeight()/2+10),
+        xi = 100,
+        yi = (love.graphics.getHeight()/2+10),
         width = 25,
         height = 200,
         rot = math.rad(0),
@@ -143,6 +212,8 @@ function love.load()
     paddle2 = {
         x = love.graphics.getWidth()-100,
         y = (love.graphics.getHeight()/2),
+        xi = love.graphics.getWidth()-100,
+        yi = (love.graphics.getHeight()/2+10),
         width = 25,
         height = 200,
         rot = 0,
@@ -187,9 +258,53 @@ function love.load()
         sy = 2
     }
 
+
+    gameEndMenu = {
+        x = love.graphics.getWidth()/2,
+        y = love.graphics.getHeight()/2,
+        width = 1000,
+        height = 250,
+    }
+    -- Centre the images on the x and give them a Y a certain distance from either y border of the image
+    gameEndMenu.x = gameEndMenu.x - gameEndMenu.width/2 -- Centre the game end menu
+    gameEndMenu.y = gameEndMenu.y - gameEndMenu.height/2
+
+
+    playAgain = {
+        x = gameEndMenu.x + gameEndMenu.width/2,
+        y = gameEndMenu.y + 10,
+        image = love.graphics.newImage("PlayAgainButton.png"),
+        width =  635,
+        height = 66,
+        sx = 1,
+        sy = 1
+    }
+
+    mainMenu = {
+        x = gameEndMenu.x + gameEndMenu.width/2,
+        y = (gameEndMenu.y + gameEndMenu.height),
+        image = love.graphics.newImage("MainMenuButton.png"),
+        width = 632,
+        height = 66,
+        sx = 1,
+        sy = 1
+    }
+
+
+
     startButton.width = startButton.iwidth * startButton.sx
     startButton.height = startButton.iheight * startButton.sy
     startButton.x = startButton.x - (startButton.iwidth/2)
+
+    playAgain.width = playAgain.width * playAgain.sx
+    playAgain.height = playAgain.height * playAgain.sy
+    playAgain.x = playAgain.x - playAgain.width/2
+
+    mainMenu.width = mainMenu.width * mainMenu.sx
+    mainMenu.height = mainMenu.height * mainMenu.sy
+    mainMenu.y = mainMenu.y - (10 + mainMenu.height)
+    mainMenu.x = mainMenu.x - mainMenu.width/2
+
 
     title.width = title.width * title.sx
     title.height = title.height * title.sy
@@ -200,11 +315,10 @@ function love.load()
     paddle1.y = paddle1.y - paddle1.height -- These 2 lines are to centre the paddle properly
     paddle2.y = paddle2.y - paddle2.height
 
-    ball.width = ball.width * ball.sX   -- Correct the width and height for the sf of the ball
-    ball.height = ball.height * ball.sY
+    paddle1.iy = paddle1.y
+    paddle2.iy = paddle2.y
 
-    ball.x = love.graphics.getWidth()/2
-    ball.y = love.graphics.getHeight()/2
+
 
     -- Below defines the x and y values of the boundaries of the screen
     upperYBoundary = 0
@@ -217,6 +331,7 @@ function love.update(dt)
 
 
     time = time + dt
+
     if roundBegun then
         -- Player 1 Movement
         if love.keyboard.isDown("s") then
@@ -282,67 +397,119 @@ function love.update(dt)
                     currentAnimationFrame = 1
                 end
 
-                if  currentPowerUp and collisionDetection(ball,currentPowerUp) then
-                    local powerupName = currentPowerUp.Name
-                    currentPowerUp = nil
-                    if powerupName == "Enlarge ball" then
-                        ball.sX = 6
-                        ball.sy = 6
-                        ball.width = ball.width * ball.sX   -- Correct the width and height for the sf of the ball
-                        ball.height = ball.height * ball.sY
-                    elseif powerupName == "Shrink paddle" then
-                        --lastCollision
-                    elseif powerupName == "Freeze paddle" then
+                for i=1, #ballList do
+                    if  currentPowerUp and collisionDetection(ballList[i],currentPowerUp) then
+                        local powerupName = currentPowerUp.Name
+                        powerUpEffectQueue[#powerUpEffectQueue + 1] = {powerupName,ballList[i].lastCollision,time} -- Each powerup log is a log of the powerup's name, the paddle that has it and the time it was gotten at
+                        currentPowerUp = nil
+                        if powerupName == "Enlarge ball" then
+                            print("Enlarge GET!")
+                            for j=1, #ballList do
+                                ballList[j].width = ballList[j].width / ballList[j].sX
+                                ballList[j].height = ballList[j].height / ballList[j].sY
 
-                    elseif powerupName == "Multi Ball" then
-
-                    elseif powerupName == "Increase paddle speed" then
-
+                                ballList[j].sX = 6
+                                ballList[j].sy = 6
+                                ballList[j].width = ballList[j].width * ballList[j].sX   -- Correct the width and height for the sf of the ball
+                                ballList[j].height = ballList[j].height * ballList[j].sY
+                            end
+                        elseif powerupName == "Shrink paddle" then
+                            print("Shrink GET!")
+                            if ballList[i].lastCollision == paddle1 or ballList[i].lastCollision == paddle2 then
+                                print(":)")
+                            end
+                            ballList[i].lastCollision.height = 1200
+                        elseif powerupName == "Freeze paddle" then
+                            print("Freeze GET!")
+                            ballList[i].lastCollision.speed = 0
+                        elseif powerupName == "Multi Ball" then
+                            print("Multi ball GET!")
+                            ballList[#ballList + 1] = createBall()
+                        elseif powerupName == "Increase paddle speed" then
+                            print("INCREASE PADDLE SPEED GET!")
+                            ballList[i].lastCollision.speed = ballList[i].lastCollision.speed * 2
+                        end
                     end
                 end
             end
 
+            for i=1, #powerUpEffectQueue do
+                if powerUpEffectQueue[i][3] + 20 > time then
+                    -- Take off this powerup
+                    local powerupName = powerUpEffectQueue[i][1]
+                    local paddleEffected = powerUpEffectQueue[i][2]
 
-            ball.x = ball.x + (ball.vx * dt * ball.startDirection)
-            ball.y = ball.y + (ball.vy * dt)
+                    resetPowerUpEffects(powerupName,paddleEffected)
+                    table.remove(powerUpEffectQueue,i)
+                end
+            end
 
+
+            for i=1, #ballList do
+                ballList[i].x = ballList[i].x + (ballList[i].vx * dt * ballList[i].startDirection)
+                ballList[i].y = ballList[i].y + (ballList[i].vy * dt)
+            end
 
 
 
         --    Collisions
 
-            if ball.x > upperXBoundary-ball.width then
-               paddle1.score = paddle1.score + 1
-               ballServe()
+            for i=1, #ballList do
+                if ballList[i].x > upperXBoundary-ballList[i].width then
+                   paddle1.score = paddle1.score + 1
 
-           elseif ball.x < lowerXBoundary+ball.width then
-               paddle2.score = paddle2.score + 1
-               ballServe()
-            end
+                   ballList[i] = nil
+                   resetPowerUpEffects(powerupName,paddleEffected,true)
+                   if #ballList == 0 then
+                       ballServe()
+                   end
+
+               elseif ballList[i].x < lowerXBoundary+ballList[i].width then
+                   paddle2.score = paddle2.score + 1
+
+                   ballList[i] = nil
+                   resetPowerUpEffects(powerupName,paddleEffected,true)
+                   if #ballList == 0 then
+                      ballServe()
+                   end
+               end
+           end
 
             if paddle1.score == scoreLimit or paddle2.score == scoreLimit then
                 winner = paddle1
                 roundBegun = false
+                gameEnd = true
+                resetPowerUpEffects(powerupName,paddleEffected,true)
+
+                for i=1, #ballList do
+                    ballList[i] = nil
+                end
             end
 
-            if ball.y < upperYBoundary then
-                ball.vy = -ball.vy
+            for i=1, #ballList do
+                if ballList[i].y < upperYBoundary then
+                    ballList[i].vy = -ballList[i].vy
 
-            elseif ball.y > lowerYBoundary then
-                ball.vy = -ball.vy
+                elseif ballList[i].y > lowerYBoundary then
+                    ballList[i].vy = -ballList[i].vy
+                end
             end
+
 
             if not holdCalc then
-                if collisionDetection(ball,paddle1) and lastCollision ~= paddle1 then
-                    rallyCount = rallyCount + 1
-                    lastCollision = paddle1
-                    ball.startDirection = ball.startDirection * -1
-                    reboundCalculation(ball,paddle1)
-                elseif collisionDetection(ball,paddle2) and lastCollision ~= paddle2 then
-                    rallyCount = rallyCount + 1
-                    lastCollision = paddle2
-                    ball.startDirection = ball.startDirection * -1
-                    reboundCalculation(ball,paddle2)
+                for i=1, #ballList do
+                    if collisionDetection(ballList[i],paddle1) and ballList[i].lastCollision ~= paddle1 then
+                        rallyCount = rallyCount + 1
+                        ballList[i].lastCollision = paddle1
+                        ballList[i].startDirection = ballList[i].startDirection * -1
+
+                        reboundCalculation(ballList[i],paddle1)
+                    elseif collisionDetection(ballList[i],paddle2) and ballList[i].lastCollision ~= paddle2 then
+                        rallyCount = rallyCount + 1
+                        ballList[i].lastCollision = paddle2
+                        ballList[i].startDirection = ballList[i].startDirection * -1
+                        reboundCalculation(ballList[i],paddle2)
+                    end
                 end
             end
         end
@@ -357,14 +524,17 @@ function love.draw()
         love.graphics.rectangle("fill", paddle2.x, paddle2.y, paddle2.width, paddle2.height)
 
         -- Below both at 10/10
-        love.graphics.print("Ball X Velocity: " .. ball.vx .. " Ball Y Velocity: " .. ball.vy,0,50)
+        --love.graphics.print("Ball X Velocity: " .. ball.vx .. " Ball Y Velocity: " .. ball.vy,0,50)
 
 
         if currentPowerUp then
             love.graphics.draw(currentPowerUp.image,currentPowerUp.animations[math.floor(currentAnimationFrame)],currentPowerUp.x,currentPowerUp.y,0,currentPowerUp.sx,currentPowerUp.sy)
         end
 
-        love.graphics.draw(ball.image, ball.x, ball.y,0,ball.sX,ball.sY) --0, ball.sX, ball.sY) -- 138 from left edge of ball drawing to the horizontal edge of the "image"
+        for i=1, #ballList do
+            love.graphics.draw(ballList[i].image, ballList[i].x, ballList[i].y,0,ballList[i].sX,ballList[i].sY) --0, ball.sX, ball.sY) -- 138 from left edge of ball drawing to the horizontal edge of the "image"
+        end
+
         -- 71 from the top of ball to top of the plane
         love.graphics.setColor(144/255,255/255,255/255)
         --love.graphics.rectangle("fill",ball.x,ball.y+ball.height/2,10,10)
@@ -383,14 +553,24 @@ function love.draw()
             endCorrectionMsg = ("No end correction needed!")
         end
 
-
         if pauseGame then
-            if frameCounter == pauseFrame+1 then
+            if frameCounter == pauseFrame + 3 then
                 love.timer.sleep(10000)
             end
         end
+
+    elseif gameEnd then
+        -- Make coloured background for buttons to go over (rectangle)
+        love.graphics.setColor(68/255, 255/255, 255/255)
+        love.graphics.rectangle("fill",gameEndMenu.x,gameEndMenu.y,gameEndMenu.width,gameEndMenu.height)
+        love.graphics.draw(mainMenu.image,mainMenu.x,mainMenu.y,0,mainMenu.sx,mainMenu.sy)
+        love.graphics.draw(playAgain.image,playAgain.x,playAgain.y,0,playAgain.sx,playAgain.sy)
+        -- Show main menu button
+        -- Show play again
+
     else
         -- Show menu screen
+        love.graphics.setColor(1,1,1) -- If anything needs to get drawn here this needs to be the colour they're drawn in
         love.graphics.draw(startButton.image,startButton.x,startButton.y,0,startButton.sx,startButton.sy)
         love.graphics.draw(title.image,title.x,title.y,0,title.sx,title.sy)
 
@@ -415,8 +595,28 @@ end
 
 function love.mousepressed(x,y,button)
     if button == 1 then
-        if (x > (startButton.x) and x < startButton.x + startButton.width) and (y > startButton.y and y < startButton.y + startButton.height) then
-            roundBegun = true
+        if not roundBegun and not gameEnd then
+            if (x > (startButton.x) and x < startButton.x + startButton.width) and (y > startButton.y and y < startButton.y + startButton.height) then
+                roundBegun = true
+                ballServe(true)
+
+            end
+        elseif gameEnd then
+            if (x > mainMenu.x and x < mainMenu.x + mainMenu.width) and (y > mainMenu.y and y < mainMenu.y + mainMenu.height) then -- Main menu button pressed
+                roundBegun = false
+                gameEnd = false
+
+            elseif (x > playAgain.x and x < playAgain.x + playAgain.width) and (y > playAgain.y and y < playAgain.y + playAgain.height) then
+                roundBegun = true--
+                gameEnd = false
+                ballServe(true)
+            end
         end
+    end
+end
+
+function love.keypressed(key)
+    if key == "p" then
+        pauseGameExec()
     end
 end
