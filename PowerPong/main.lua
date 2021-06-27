@@ -88,6 +88,7 @@ local function ballServe(gameStart)
         rallyCount = 0
     else
         pauseTime = time + 3
+        rallyCount = 0
     end
 
     ballList[1].x = ballList[1].xi
@@ -101,6 +102,7 @@ local function ballServe(gameStart)
 end
 
 local function resetPowerUpEffects(powerupName,paddleEffected,resetAll)
+
     if resetAll then
         for i=1,#powerUpEffectQueue do
             local powerupName = powerUpEffectQueue[i][1]
@@ -122,7 +124,7 @@ local function resetPowerUpEffects(powerupName,paddleEffected,resetAll)
                     ballList[k] = nil
                 end
             elseif powerupName == "Increase paddle speed" then
-                paddleEffected.speed = paddleEffected.speed / 2
+                paddleEffected.speed = 1200
             end
         end
         powerUpEffectQueue = {}
@@ -141,7 +143,7 @@ local function resetPowerUpEffects(powerupName,paddleEffected,resetAll)
         elseif powerupname == "Multi Ball" then
             ballList[#ballList] = nil
         elseif powerupName == "Increase paddle speed" then
-            paddleEffected.speed = paddleEffected.speed / 2
+            paddleEffected.speed = 1200
         end
     end
 end
@@ -157,7 +159,7 @@ function love.load()
     time = 0 -- Time since program has started
     pauseTime = 0 -- If this time is > time then the time will need to catch up to pausetime before code continues updating
     rallyCount = 0 -- When displaying take away value by 1 because logic of first turns.
-    scoreLimit = 2
+    scoreLimit = 10
     roundBegun = false
     winner = nil
     showTutorial = false
@@ -168,16 +170,22 @@ function love.load()
 
     powerUps = {
         --{Name = "Enlarge ball", image = love.graphics.newImage("BigBallPowerUp.png")},
-        {Name = "Shrink paddle",image = love.graphics.newImage("SmallPaddlePowerUp.png")},
+        --{Name = "Shrink paddle",image = love.graphics.newImage("SmallPaddlePowerUp.png")},
         --{Name = "Freeze paddle", image = love.graphics.newImage("FreezePowerUp.png")},
         --{Name = "Multi Ball", image = love.graphics.newImage("MultiballPowerUp.png")},
-        --{Name = "Increase paddle speed", image = love.graphics.newImage("PaddleFasterPowerUp.png")}
+        {Name = "Increase paddle speed", image = love.graphics.newImage("PaddleFasterPowerUp.png")},
     }
 
     currentPowerUp = nil
     currentAnimationFrame = 1
 -- SmallPaddlPowerUp
 
+
+    scoreCountImgs = {}
+
+    for i=0, 9 do
+        scoreCountImgs[i] = love.graphics.newImage("Number" .. i .. ".png")
+    end
 
     for i=1, #powerUps do
         powerUps[i].animations = {}
@@ -203,7 +211,7 @@ function love.load()
         rot = math.rad(0),
         sX = 6,
         sY = 6,
-        speed = 600,
+        speed = 1200,
         score = 0,
         oX = 10,
         oY = 0
@@ -219,7 +227,7 @@ function love.load()
         rot = 0,
         sX = 6,
         sY = 6,
-        speed = 600,
+        speed = 1200,
         score = 0,
         oX = 5,
         oY = 0,
@@ -349,13 +357,13 @@ function love.update(dt)
     -- Player 2 Movement
         if love.keyboard.isDown("down") then
             if paddle2.y < lowerYBoundary - paddle2.height then
-                paddle2.y = paddle2.y + paddle1.speed * dt
+                paddle2.y = paddle2.y + paddle2.speed * dt
             end
         end
 
         if love.keyboard.isDown("up") then
             if paddle2.y > upperYBoundary then
-                paddle2.y = paddle2.y - paddle1.speed * dt
+                paddle2.y = paddle2.y - paddle2.speed * dt
             end
         end
 
@@ -371,15 +379,19 @@ function love.update(dt)
                 ballServe(true)
                 nextPowerUpSpawn = math.random(7,10) + time
             else
+
                 -- Show image variable is false here
                 showTutorial = false
             end
 
+
+
+
             if time >= nextPowerUpSpawn  and not currentPowerUp then
                 nextPowerUpSpawn = math.random(7,10) + time
                 currentPowerUp = powerUps[math.random(#powerUps)]
-                currentPowerUp.sx = 6
-                currentPowerUp.sy = 6
+                currentPowerUp.sx = 7
+                currentPowerUp.sy = 7
                 currentPowerUp.x = love.graphics.getWidth()/2 - 16*currentPowerUp.sy -- 16 x 16 img
                 currentPowerUp.y = 0
                 currentPowerUp.height = 16 * currentPowerUp.sy
@@ -391,6 +403,7 @@ function love.update(dt)
                 if currentPowerUp.y > love.graphics.getHeight()+16*currentPowerUp.sy then --if goes past the border then make it nil
                     currentPowerUp = nil
                 end
+
                 currentAnimationFrame = currentAnimationFrame + 10 * dt
 
                 if currentPowerUp and currentAnimationFrame >= #currentPowerUp.animations+1 then
@@ -418,23 +431,25 @@ function love.update(dt)
                             if ballList[i].lastCollision == paddle1 or ballList[i].lastCollision == paddle2 then
                                 print(":)")
                             end
-                            ballList[i].lastCollision.height = 1200
+                            ballList[i].lastCollision.height = 300
                         elseif powerupName == "Freeze paddle" then
                             print("Freeze GET!")
                             ballList[i].lastCollision.speed = 0
                         elseif powerupName == "Multi Ball" then
                             print("Multi ball GET!")
                             ballList[#ballList + 1] = createBall()
+                            ballList[#ballList + 1] = createBall()
                         elseif powerupName == "Increase paddle speed" then
                             print("INCREASE PADDLE SPEED GET!")
-                            ballList[i].lastCollision.speed = ballList[i].lastCollision.speed * 2
+                            ballList[i].lastCollision.speed = 2400
+                            print(":)")
                         end
                     end
                 end
             end
 
             for i=1, #powerUpEffectQueue do
-                if powerUpEffectQueue[i][3] + 20 > time then
+                if powerUpEffectQueue[i][3] + 3 < time then
                     -- Take off this powerup
                     local powerupName = powerUpEffectQueue[i][1]
                     local paddleEffected = powerUpEffectQueue[i][2]
@@ -442,6 +457,13 @@ function love.update(dt)
                     resetPowerUpEffects(powerupName,paddleEffected)
                     table.remove(powerUpEffectQueue,i)
                 end
+            end
+
+
+            if math.floor(rallyCount/5) > 0 then
+
+                ballList[1].vx = ballList[1].vx + (math.floor(rallyCount/5) * 5)
+                ballList[1].vy = ballList[1].vy + (math.floor(rallyCount/5) * 5)
             end
 
 
@@ -458,8 +480,9 @@ function love.update(dt)
                 if ballList[i].x > upperXBoundary-ballList[i].width then
                    paddle1.score = paddle1.score + 1
 
-                   ballList[i] = nil
-                   resetPowerUpEffects(powerupName,paddleEffected,true)
+                   table.remove(ballList,i) -- Problem here
+
+                   --resetPowerUpEffects(powerupName,paddleEffected,true)
                    if #ballList == 0 then
                        ballServe()
                    end
@@ -467,8 +490,9 @@ function love.update(dt)
                elseif ballList[i].x < lowerXBoundary+ballList[i].width then
                    paddle2.score = paddle2.score + 1
 
-                   ballList[i] = nil
-                   resetPowerUpEffects(powerupName,paddleEffected,true)
+                   table.remove(ballList,i)
+
+                   --resetPowerUpEffects(powerupName,paddleEffected,true)
                    if #ballList == 0 then
                       ballServe()
                    end
@@ -481,12 +505,11 @@ function love.update(dt)
                 gameEnd = true
                 resetPowerUpEffects(powerupName,paddleEffected,true)
 
-                for i=1, #ballList do
-                    ballList[i] = nil
-                end
+                ballList = {}
             end
 
             for i=1, #ballList do
+                --print(i .. " " .. #ballList)
                 if ballList[i].y < upperYBoundary then
                     ballList[i].vy = -ballList[i].vy
 
@@ -494,6 +517,7 @@ function love.update(dt)
                     ballList[i].vy = -ballList[i].vy
                 end
             end
+
 
 
             if not holdCalc then
@@ -534,6 +558,9 @@ function love.draw()
         for i=1, #ballList do
             love.graphics.draw(ballList[i].image, ballList[i].x, ballList[i].y,0,ballList[i].sX,ballList[i].sY) --0, ball.sX, ball.sY) -- 138 from left edge of ball drawing to the horizontal edge of the "image"
         end
+
+        love.graphics.draw(scoreCountImgs[paddle1.score],100,100,0,5,5)
+        love.graphics.draw(scoreCountImgs[paddle2.score],love.graphics.getWidth()-200,100,0,5,5)
 
         -- 71 from the top of ball to top of the plane
         love.graphics.setColor(144/255,255/255,255/255)
@@ -599,6 +626,7 @@ function love.mousepressed(x,y,button)
             if (x > (startButton.x) and x < startButton.x + startButton.width) and (y > startButton.y and y < startButton.y + startButton.height) then
                 roundBegun = true
                 ballServe(true)
+                resetPowerUpEffects(powerupName,paddleEffected,true)
 
             end
         elseif gameEnd then
